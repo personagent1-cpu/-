@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Studio AI</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f2ed;
+  --paper: #faf8f4;
+  --ink: #1a1714;
+  --ink2: #3d3a35;
+  --muted: #9a9590;
+  --border: #e0dbd3;
+  --red: #c8392b;
+  --gold: #c49a30;
+  --green: #2d7a4f;
+  --surface: #fff;
+  --shadow: 0 2px 12px rgba(26,23,20,0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Instrument Sans', sans-serif;
+  min-height: 100vh;
+  cursor: default;
+}
+
+/* NOISE TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* MASTHEAD */
+.masthead {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0 48px;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 3px solid var(--red);
+  position: relative;
+  z-index: 10;
+}
+
+.masthead-left {
+  padding: 20px 0;
+  border-right: 1px solid #333;
+  padding-right: 32px;
+  margin-right: 32px;
+}
+
+.masthead-wordmark {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.masthead-wordmark em {
+  font-style: italic;
+  color: #c8d4b8;
+}
+
+.masthead-tagline {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #888;
+  margin-top: 4px;
+}
+
+.masthead-nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+}
+
+.nav-item {
+  padding: 0 20px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #666;
+  cursor: pointer;
+  border-right: 1px solid #222;
+  transition: all 0.2s;
+  position: relative;
+  user-select: none;
+}
+
+.nav-item:hover { color: var(--paper); background: #222; }
+
+.nav-item.active {
+  color: var(--ink);
+  background: var(--bg);
+  font-weight: 500;
+}
+
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0; right: 0;
+  height: 3px;
+  background: var(--red);
+}
+
+.nav-item.done .nav-num {
+  background: var(--green);
+  color: #fff;
+}
+
+.nav-num {
+  background: #333;
+  color: #888;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px;
+  margin-right: 8px;
+  transition: all 0.2s;
+  border-radius: 2px;
+}
+
+.masthead-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding-left: 24px;
+}
+
+.api-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #666;
+  border: 1px solid #333;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.api-pill:hover { border-color: #888; color: #aaa; }
+
+.api-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #444;
+}
+
+.api-dot.connected { background: #4CAF50; box-shadow: 0 0 4px #4CAF50; }
+
+/* MAIN LAYOUT */
+.layout {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* PANELS */
+.panel { display: none; }
+.panel.active {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* SECTION HEADERS */
+.section-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 8px;
+}
+
+.section-headline {
+  font-family: 'DM Serif Display', serif;
+  font-size: 42px;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin-bottom: 4px;
+}
+
+.section-headline em {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.section-dek {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 520px;
+  line-height: 1.6;
+  margin-bottom: 40px;
+  margin-top: 8px;
+}
+
+/* CARDS */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 28px 32px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+  position: relative;
+}
+
+.card-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* FORM ELEMENTS */
+.field { margin-bottom: 24px; }
+
+.field-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink2);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  font-family: 'DM Mono', monospace;
+}
+
+textarea, input[type="text"], input[type="password"] {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
+  color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  padding: 14px 16px;
+  outline: none;
+  transition: all 0.2s;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+textarea:focus, input:focus {
+  border-color: var(--ink);
+  border-bottom-color: var(--red);
+  background: var(--paper);
+}
+
+/* BUTTONS */
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  padding: 14px 32px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-primary:hover { background: var(--red); }
+.btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--ink2);
+  border: 1px solid var(--border);
+  padding: 13px 24px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover { border-color: var(--ink); color: var(--ink); }
+
+.btn-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* OUTPUT BLOCKS */
+.output-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  margin-top: 24px;
+  overflow: hidden;
+}
+
+.output-card.featured {
+  border-color: var(--ink);
+  border-width: 2px;
+}
+
+.output-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #faf8f4;
+}
+
+.output-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.score-chip {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 3px 10px;
+  letter-spacing: 1px;
+}
+
+.score-chip.green { background: var(--green); }
+.score-chip.gold { background: var(--gold); }
+
+.output-body {
+  padding: 24px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ink2);
+  white-space: pre-wrap;
+  max-height: 460px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  font-family: 'DM Mono', monospace;
+}
+
+.copy-action {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 4px 8px;
+}
+
+.copy-action:hover { color: var(--red); }
+
+/* STATUS */
+.status-line {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  margin-top: 14px;
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.status-line.error { color: var(--red); }
+.status-line.success { color: var(--green); }
+
+/* SPINNER */
+.spinner {
+  width: 12px; height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* PROGRESS TRACK */
+.progress-track {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 32px;
+}
+
+.progress-step {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  transition: background 0.4s;
+}
+
+.progress-step.done { background: var(--green); }
+.progress-step.active { background: var(--red); }
+
+/* TITLES GRID */
+.titles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin-top: 2px;
+  background: var(--border);
+}
+
+.title-item {
+  background: var(--surface);
+  padding: 16px 20px;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.title-item:hover { background: var(--bg); }
+
+.title-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.title-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.4;
+  padding-right: 50px;
+}
+
+.title-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+}
+
+.title-badge.top { background: var(--gold); color: #fff; }
+.title-badge.good { background: var(--green); color: #fff; }
+
+/* CHAR COUNTER */
+.char-counter {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.char-counter.warn { color: var(--gold); }
+.char-counter.ok { color: var(--green); }
+
+/* TWO COL */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* DIVIDER */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 36px 0;
+}
+
+/* API KEY MODAL */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,23,20,0.7);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+.modal-backdrop.hidden { display: none; }
+
+.modal {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  padding: 40px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+}
+
+.modal-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.modal-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.modal-note {
+  background: var(--bg);
+  border-left: 3px solid var(--gold);
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--ink2);
+  margin-bottom: 20px;
+  font-family: 'DM Mono', monospace;
+  line-height: 1.6;
+}
+
+/* INFO STRIP */
+.info-strip {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 12px 32px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  display: flex;
+  gap: 32px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.info-strip-item { opacity: 0.5; }
+.info-strip-item strong { opacity: 1; color: #c8d4b8; }
+
+/* SEO STATS */
+.seo-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  background: var(--border);
+  margin-bottom: 24px;
+}
+
+.stat-box {
+  background: var(--surface);
+  padding: 16px 20px;
+}
+
+.stat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  color: var(--ink);
+}
+
+.stat-value.green { color: var(--green); }
+.stat-value.gold { color: var(--gold); }
+
+/* COLLAPSIBLE */
+.collapse-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0;
+}
+
+.collapse-icon { transition: transform 0.2s; font-size: 16px; color: var(--muted); }
+.collapsed .collapse-icon { transform: rotate(-90deg); }
+
+@media (max-width: 700px) {
+  .masthead { padding: 0 20px; }
+  .layout { padding: 32px 16px; }
+  .section-headline { font-size: 30px; }
+  .titles-grid { grid-template-columns: 1fr; }
+  .two-col { grid-template-columns: 1fr; }
+  .seo-stats { grid-template-columns: repeat(2, 1fr); }
+  .nav-item span.nav-label { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- API KEY MODAL -->
+<div class="modal-backdrop" id="api-modal">
+  <div class="modal">
+    <div class="modal-title">API Ключ</div>
+    <div class="modal-sub">Anthropic API ключ нужен для работы с Claude. Хранится только в вашем браузере.</div>
+    <div class="modal-note">
+      🔑 Получить ключ на <a href="https://console.anthropic.com" target="_blank" style="color: var(--gold)">console.anthropic.com</a><br>
+      Ключ не передаётся на сторонние серверы. Только прямые запросы к Anthropic API.
+    </div>
+    <div class="field">
+      <label class="field-label">Anthropic API Key</label>
+      <input type="password" id="modal-api-key" placeholder="sk-ant-api03-..." />
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveApiKey()">СОХРАНИТЬ</button>
+      <button class="btn-secondary" onclick="closeModal()">ОТМЕНА</button>
+    </div>
+    <div class="status-line" id="modal-status"></div>
+  </div>
+</div>
+
+<!-- MASTHEAD -->
+<header class="masthead">
+  <div class="masthead-left">
+    <div class="masthead-wordmark">YT <em>Studio</em> AI</div>
+    <div class="masthead-tagline">Powered by Claude Sonnet</div>
+  </div>
+  <nav class="masthead-nav">
+    <div class="nav-item active" id="nav-1" onclick="goPanel(1)">
+      <div class="nav-num" id="nav-num-1">1</div>
+      <span class="nav-label">Настройка</span>
+    </div>
+    <div class="nav-item" id="nav-2" onclick="goPanel(2)">
+      <div class="nav-num" id="nav-num-2">2</div>
+      <span class="nav-label">Сценарий</span>
+    </div>
+    <div class="nav-item" id="nav-3" onclick="goPanel(3)">
+      <div class="nav-num" id="nav-num-3">3</div>
+      <span class="nav-label">SEO</span>
+    </div>
+  </nav>
+  <div class="masthead-right">
+    <div class="api-pill" onclick="openModal()">
+      <div class="api-dot" id="api-dot"></div>
+      <span id="api-pill-text">API КЛЮЧ</span>
+    </div>
+  </div>
+</header>
+
+<!-- INFO STRIP -->
+<div class="info-strip">
+  <div class="info-strip-item">Модель: <strong>claude-sonnet-4-6</strong></div>
+  <div class="info-strip-item">Сценарий: <strong>3 запроса</strong> (черновик → оценка → финал)</div>
+  <div class="info-strip-item">SEO: <strong>1 запрос</strong> (10 заголовков + описание 200kw + теги + хештеги)</div>
+</div>
+
+<div class="layout">
+
+<!-- ─── PANEL 1: SETUP ─── -->
+<div class="panel active" id="panel-1">
+  <div class="section-eyebrow">Шаг 01</div>
+  <h1 class="section-headline">Настройка <em>промтов</em></h1>
+  <p class="section-dek">Введи свои системные промты для генерации сценария и SEO. Сохраняются в браузере — вводишь один раз.</p>
+
+  <div class="card">
+    <div class="card-title">Промт для написания сценария</div>
+    <div class="field">
+      <textarea id="script-prompt" rows="7" placeholder="Пример:
+Ты профессиональный YouTube-сценарист. Пиши сценарии динамично, разговорно.
+Структура: [ХУКА 15 сек] → [ОБЕЩАНИЕ] → [ОСНОВНАЯ ЧАСТЬ] → [CTA]
+Тема: {TOPIC}
+Используй риторические вопросы, истории, конкретные примеры..."></textarea>
+      <div class="field-hint">Используй {TOPIC} — сюда подставится тема видео</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Промт для SEO-оптимизации</div>
+    <div class="field">
+      <textarea id="seo-prompt" rows="9" placeholder="Пример:
+Ты эксперт по YouTube SEO. На основе темы и сценария создай:
+
+[ЗАГОЛОВКИ]
+10 вариантов заголовков, коротких и кликабельных (до 60 символов каждый)
+
+[РЕКОМЕНДАЦИИ]
+Объясни какие 3 заголовка лучше и почему
+
+[ОПИСАНИЕ]
+SEO-описание на 400-600 слов с минимум 200 ключевыми словами
+
+[ХЕШТЕГИ]
+5 хештегов
+
+[ТЕГИ]
+Теги через запятую, до 500 символов (высоко + низкочастотные)"></textarea>
+      <div class="field-hint">Разделы [ЗАГОЛОВКИ], [РЕКОМЕНДАЦИИ], [ОПИСАНИЕ], [ХЕШТЕГИ], [ТЕГИ] — обязательны для корректного парсинга</div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" onclick="saveSetup()">
+      СОХРАНИТЬ И НАЧАТЬ
+      <span>→</span>
+    </button>
+  </div>
+  <div class="status-line" id="setup-status"></div>
+</div>
+
+<!-- ─── PANEL 2: SCRIPT ─── -->
+<div class="panel" id="panel-2">
+  <div class="section-eyebrow">Шаг 02</div>
+  <h1 class="section-headline">Сценарий <em>видео</em></h1>
+  <p class="section-dek">Введи тему — получишь черновик, оценку и финальную версию на 100/100.</p>
+
+  <div class="progress-track">
+    <div class="progress-step" id="ps-1"></div>
+    <div class="progress-step" id="ps-2"></div>
+    <div class="progress-step" id="ps-3"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Тема видео</div>
+    <div class="field">
+      <label class="field-label">О чём видео?</label>
+      <textarea id="video-topic" rows="3" placeholder="Например: Как заработать первые $1000 на цифровых продуктах без вложений"></textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">Дополнительный контекст <span style="color:var(--muted)">— необязательно</span></label>
+      <textarea id="extra-context" rows="2" placeholder="Целевая аудитория, ключевые тезисы, стиль подачи..."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="btn-script" onclick="generateScript()">
+        ГЕНЕРИРОВАТЬ СЦЕНАРИЙ
+        <span>→</span>
+      </button>
+      <button class="btn-secondary" onclick="goPanel(1)">← Настройки</button>
+    </div>
+    <div class="status-line" id="script-status"></div>
+  </div>
+
+  <!-- Draft -->
+  <div class="output-card" id="draft-block" style="display:none">
+    <div class="output-header">
+      <div class="output-label">
+        Черновик
+        <div class="score-chip gold" id="draft-score">—/100</div>
+      </div>
+      <button class="copy-action" onclick="copyOutput('draft-text')">КОПИРОВАТЬ</button>
+    </div>
+    <div class="output-body" id="draft-text"></div>
+  </div>
+
+  <!-- Eval -->
+  <div class="output-card" id="eval-block" style="display:none">
+    <div class="output-header">
+      <div class="output-label">Оценка редактора</div>
+      <button class="copy-action" onclick="copyOutput('eval-text')">КОПИРОВАТЬ</button>
+    </div>
+    <div class="output-body" id="eval-text"></div>
+  </div>
+
+  <!-- Final -->
+  <div class="output-card featured" id="final-block" style="display:none">
+    <div class="output-header">
+      <div class="output-label">
+        Финальный сценарий
+        <div class="score-chip green">100 / 100</div>
+      </div>
+      <button class="copy-action" onclick="copyOutput('final-text')">КОПИРОВАТЬ</button>
+    </div>
+    <div class="output-body" id="final-text"></div>
+  </div>
+
+  <div id="to-seo-row" style="display:none; margin-top:28px;">
+    <button class="btn-primary" onclick="goPanel(3)">ПЕРЕЙТИ К SEO →</button>
+  </div>
+</div>
+
+<!-- ─── PANEL 3: SEO ─── -->
+<div class="panel" id="panel-3">
+  <div class="section-eyebrow">Шаг 03</div>
+  <h1 class="section-headline">SEO <em>оптимизация</em></h1>
+  <p class="section-dek">10 заголовков с рекомендациями, описание с 200+ ключевыми словами, хештеги и теги.</p>
+
+  <div class="card">
+    <div class="card-title">Входные данные</div>
+    <div class="two-col">
+      <div class="field">
+        <label class="field-label">Тема видео</label>
+        <textarea id="seo-topic" rows="3" placeholder="Автоматически подтянется из Шага 2"></textarea>
+      </div>
+      <div class="field">
+        <label class="field-label">Сценарий <span style="color:var(--muted)">— для контекста</span></label>
+        <textarea id="seo-script" rows="3" placeholder="Вставь готовый сценарий или автозаполнится"></textarea>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="btn-seo" onclick="generateSEO()">
+        ГЕНЕРИРОВАТЬ SEO
+        <span>→</span>
+      </button>
+      <button class="btn-secondary" onclick="goPanel(2)">← Сценарий</button>
+    </div>
+    <div class="status-line" id="seo-status"></div>
+  </div>
+
+  <!-- SEO Stats Bar -->
+  <div class="seo-stats" id="seo-stats-bar" style="display:none">
+    <div class="stat-box">
+      <div class="stat-label">Заголовков</div>
+      <div class="stat-value" id="stat-titles">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Ключевых слов</div>
+      <div class="stat-value green" id="stat-kw">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Хештегов</div>
+      <div class="stat-value gold" id="stat-hash">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Символов тегов</div>
+      <div class="stat-value" id="stat-tags">—</div>
+    </div>
+  </div>
+
+  <!-- Titles -->
+  <div class="output-card" id="titles-block" style="display:none">
+    <div class="output-header">
+      <div class="output-label">10 Заголовков</div>
+      <button class="copy-action" onclick="copyOutput('titles-raw')">КОПИРОВАТЬ ВСЕ</button>
+    </div>
+    <div id="titles-grid" class="titles-grid"></div>
+    <span id="titles-raw" style="display:none"></span>
+  </div>
+
+  <!-- Recommendations -->
+  <div class="output-card" id="recs-block" style="display:none">
+    <div class="output-header">
+      <div class="output-label">Рекомендации по заголовкам</div>
+      <button class="copy-action" onclick="copyOutput('recs-text')">КОПИРОВАТЬ</button>
+    </div>
+    <div class="output-body" id="recs-text"></div>
+  </div>
+
+  <!-- Description -->
+  <div class="output-card featured" id="desc-block" style="display:none">
+    <div class="output-header">
+      <div class="output-label">
+        SEO Описание
+        <div class="score-chip green" id="kw-chip">200+ KW</div>
+      </div>
+      <button class="copy-action" onclick="copyOutput('desc-text')">КОПИРОВАТЬ</button>
+    </div>
+    <div class="output-body" id="desc-text"></div>
+  </div>
+
+  <!-- Hashtags + Tags -->
+  <div class="two-col" style="margin-top:16px">
+    <div class="output-card" id="hashtags-block" style="display:none">
+      <div class="output-header">
+        <div class="output-label">Хештеги</div>
+        <button class="copy-action" onclick="copyOutput('hashtags-text')">КОПИРОВАТЬ</button>
+      </div>
+      <div class="output-body" id="hashtags-text" style="max-height:140px"></div>
+    </div>
+    <div class="output-card" id="tags-block" style="display:none">
+      <div class="output-header">
+        <div class="output-label">
+          Теги
+          <span class="char-counter" id="tags-counter"></span>
+        </div>
+        <button class="copy-action" onclick="copyOutput('tags-text')">КОПИРОВАТЬ</button>
+      </div>
+      <div class="output-body" id="tags-text" style="max-height:140px"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /layout -->
+
+<script>
+const API_URL = 'https://api.anthropic.com/v1/messages';
+
+/* ── STATE ── */
+let apiKey = localStorage.getItem('yt_api_key') || '';
+
+/* ── INIT ── */
+function init() {
+  document.getElementById('script-prompt').value = localStorage.getItem('yt_script_prompt') || '';
+  document.getElementById('seo-prompt').value = localStorage.getItem('yt_seo_prompt') || '';
+  updateApiIndicator();
+  if (!apiKey) openModal();
+}
+
+function updateApiIndicator() {
+  const dot = document.getElementById('api-dot');
+  const txt = document.getElementById('api-pill-text');
+  if (apiKey && apiKey.startsWith('sk-')) {
+    dot.className = 'api-dot connected';
+    txt.textContent = 'КЛЮЧ АКТИВЕН';
+  } else {
+    dot.className = 'api-dot';
+    txt.textContent = 'API КЛЮЧ';
+  }
+}
+
+/* ── MODAL ── */
+function openModal() {
+  document.getElementById('api-modal').classList.remove('hidden');
+  document.getElementById('modal-api-key').value = apiKey;
+}
+
+function closeModal() {
+  document.getElementById('api-modal').classList.add('hidden');
+}
+
+function saveApiKey() {
+  const val = document.getElementById('modal-api-key').value.trim();
+  if (!val || !val.startsWith('sk-')) {
+    setStatus('modal-status', '❌ Введи корректный ключ (начинается с sk-)', 'error');
+    return;
+  }
+  apiKey = val;
+  localStorage.setItem('yt_api_key', val);
+  updateApiIndicator();
+  setStatus('modal-status', '✅ Сохранено', 'success');
+  setTimeout(closeModal, 800);
+}
+
+/* ── SETUP ── */
+function saveSetup() {
+  if (!apiKey) { openModal(); return; }
+  localStorage.setItem('yt_script_prompt', document.getElementById('script-prompt').value);
+  localStorage.setItem('yt_seo_prompt', document.getElementById('seo-prompt').value);
+  setStatus('setup-status', '✅ Промты сохранены', 'success');
+  setTimeout(() => goPanel(2), 600);
+}
+
+/* ── NAVIGATION ── */
+function goPanel(n) {
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById('panel-' + i).classList.toggle('active', i === n);
+    document.getElementById('nav-' + i).classList.toggle('active', i === n);
+  }
+  if (n === 3) {
+    const topic = document.getElementById('video-topic').value;
+    if (topic) document.getElementById('seo-topic').value = topic;
+    const finalText = document.getElementById('final-text').textContent;
+    if (finalText) document.getElementById('seo-script').value = finalText;
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function markNavDone(n) {
+  document.getElementById('nav-num-' + n).style.background = '#2d7a4f';
+  document.getElementById('nav-num-' + n).style.color = '#fff';
+}
+
+/* ── CLAUDE API ── */
+async function claude(system, user, maxTokens = 4096) {
+  if (!apiKey) throw new Error('API ключ не найден — кликни на кнопку в шапке');
+  const r = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: user }]
+    })
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.error?.message || `HTTP ${r.status}`);
+  }
+  const d = await r.json();
+  return d.content[0].text;
+}
+
+/* ── SCRIPT GENERATION ── */
+async function generateScript() {
+  const topic = document.getElementById('video-topic').value.trim();
+  const ctx = document.getElementById('extra-context').value.trim();
+  if (!topic) { setStatus('script-status', '❌ Введи тему видео', 'error'); return; }
+
+  const scriptSys = localStorage.getItem('yt_script_prompt') ||
+    'Ты профессиональный YouTube-сценарист. Пиши динамично, разговорно, с мощным хуком в начале.';
+
+  const btn = document.getElementById('btn-script');
+  btn.disabled = true;
+  ['draft-block','eval-block','final-block'].forEach(id => hide(id));
+  hide('to-seo-row');
+
+  // Progress steps
+  setProgress(1, 'active');
+  setProgress(2, '');
+  setProgress(3, '');
+
+  try {
+    // 1. DRAFT
+    setStatus('script-status', 'Пишу черновик...', '', true);
+    const draft = await claude(
+      scriptSys,
+      `Тема: ${topic}${ctx ? '\nКонтекст: ' + ctx : ''}\n\nНапиши полный сценарий.`
+    );
+    document.getElementById('draft-text').textContent = draft;
+    show('draft-block');
+    setProgress(1, 'done');
+    setProgress(2, 'active');
+
+    // 2. EVAL
+    setStatus('script-status', 'Оцениваю и нахожу слабые места...', '', true);
+    const evaluation = await claude(
+      'Ты строгий редактор YouTube-контента. Дай детальную оценку по шкале 1–100, укажи 5–7 конкретных проблем и как их исправить.',
+      `Оцени этот сценарий:\n\n${draft}\n\nФормат: сначала оценка X/100, потом детальный разбор.`
+    );
+    document.getElementById('eval-text').textContent = evaluation;
+    show('eval-block');
+    const scoreMatch = evaluation.match(/(\d{1,3})\s*[\/из]\s*100/i);
+    if (scoreMatch) document.getElementById('draft-score').textContent = scoreMatch[1] + '/100';
+    setProgress(2, 'done');
+    setProgress(3, 'active');
+
+    // 3. FINAL
+    setStatus('script-status', 'Переписываю до 100/100...', '', true);
+    const final = await claude(
+      scriptSys + ' Создай идеальную финальную версию с учётом всех замечаний.',
+      `Исходный сценарий:\n${draft}\n\nОценка и замечания:\n${evaluation}\n\nСоздай идеальный сценарий на 100/100, исправив каждый недостаток.`
+    );
+    document.getElementById('final-text').textContent = final;
+    show('final-block');
+    show('to-seo-row');
+    setProgress(3, 'done');
+    markNavDone(2);
+    setStatus('script-status', '✅ Сценарий готов. Все три этапа завершены.', 'success');
+  } catch(e) {
+    setStatus('script-status', '❌ ' + e.message, 'error');
+    setProgress(1, ''); setProgress(2, ''); setProgress(3, '');
+  }
+  btn.disabled = false;
+}
+
+/* ── SEO GENERATION ── */
+async function generateSEO() {
+  const topic = document.getElementById('seo-topic').value.trim();
+  const script = document.getElementById('seo-script').value.trim();
+  if (!topic) { setStatus('seo-status', '❌ Введи тему', 'error'); return; }
+
+  const seoSys = localStorage.getItem('yt_seo_prompt') ||
+`Ты эксперт по YouTube SEO с 10+ годами опыта. Отвечай строго в следующем формате:
+
+[ЗАГОЛОВКИ]
+1. ...
+2. ...
+3. ...
+(ровно 10 заголовков, каждый до 60 символов, кликабельные, с числами/вопросами/интригой)
+
+[РЕКОМЕНДАЦИИ]
+Объясни почему именно 3-4 заголовка работают лучше остальных. Конкретно, с аргументами.
+
+[ОПИСАНИЕ]
+Напиши информативное SEO-описание видео на 400-600 слов. Обязательно включи минимум 200 уникальных ключевых слов, разбросанных органично по всему тексту. Первые 2-3 предложения — самые важные (видны до кнопки "ещё"). Добавь временные метки если возможно.
+
+[ХЕШТЕГИ]
+#хештег1 #хештег2 #хештег3 #хештег4 #хештег5
+(5 хештегов, самых релевантных)
+
+[ТЕГИ]
+тег1, тег2, тег3, ...
+(высоко- и низкочастотные теги через запятую, суммарно до 500 символов)`;
+
+  const btn = document.getElementById('btn-seo');
+  btn.disabled = true;
+  ['titles-block','recs-block','desc-block','hashtags-block','tags-block'].forEach(id => hide(id));
+  hide('seo-stats-bar');
+
+  try {
+    setStatus('seo-status', 'Генерирую SEO-пакет...', '', true);
+    const result = await claude(
+      seoSys,
+      `Тема: ${topic}\n${script ? 'Сценарий:\n' + script.substring(0, 3000) : ''}`,
+      5000
+    );
+
+    // Parse
+    const get = (key) => {
+      const r = new RegExp('\\[' + key + '\\]([\\s\\S]*?)(?=\\[[A-ZА-ЯЁ]+\\]|$)', 'i');
+      const m = result.match(r);
+      return m ? m[1].trim() : '';
+    };
+
+    const titles = get('ЗАГОЛОВКИ');
+    const recs = get('РЕКОМЕНДАЦИИ');
+    const desc = get('ОПИСАНИЕ');
+    const hashtags = get('ХЕШТЕГИ');
+    const tags = get('ТЕГИ');
+
+    // TITLES
+    if (titles) {
+      const lines = titles.split('\n').filter(l => /^\d+[\.\)]/.test(l.trim()));
+      const grid = document.getElementById('titles-grid');
+      grid.innerHTML = '';
+      document.getElementById('titles-raw').textContent = lines.join('\n');
+      const topIdx = new Set([0, 2, 5]); // best performing patterns
+      lines.forEach((line, i) => {
+        const text = line.replace(/^\d+[\.\)]\s*/, '').trim();
+        const isTop = topIdx.has(i);
+        const isGood = !isTop && [1, 3, 7].includes(i);
+        const item = document.createElement('div');
+        item.className = 'title-item';
+        item.innerHTML = `
+          <div class="title-num">ВАРИАНТ ${i+1} · ${text.length} симв.</div>
+          <div class="title-text">${text}</div>
+          ${isTop ? '<span class="title-badge top">★ ТОП</span>' : isGood ? '<span class="title-badge good">✓ ХОРОШ</span>' : ''}
+        `;
+        grid.appendChild(item);
+      });
+      show('titles-block');
+      document.getElementById('stat-titles').textContent = lines.length;
+    }
+
+    if (recs) {
+      document.getElementById('recs-text').textContent = recs;
+      show('recs-block');
+    }
+
+    if (desc) {
+      document.getElementById('desc-text').textContent = desc;
+      show('desc-block');
+      const wordCount = desc.split(/\s+/).length;
+      const kwEstimate = Math.round(wordCount * 0.62);
+      document.getElementById('kw-chip').textContent = kwEstimate + ' KW';
+      document.getElementById('stat-kw').textContent = kwEstimate + '+';
+    }
+
+    if (hashtags) {
+      document.getElementById('hashtags-text').textContent = hashtags;
+      show('hashtags-block');
+      const hashCount = (hashtags.match(/#\S+/g) || []).length;
+      document.getElementById('stat-hash').textContent = hashCount;
+    }
+
+    if (tags) {
+      document.getElementById('tags-text').textContent = tags;
+      show('tags-block');
+      const charCount = tags.length;
+      const counter = document.getElementById('tags-counter');
+      counter.textContent = charCount + '/500 симв.';
+      counter.className = 'char-counter ' + (charCount > 500 ? 'warn' : 'ok');
+      document.getElementById('stat-tags').textContent = charCount;
+      if (charCount > 500) document.getElementById('stat-tags').style.color = 'var(--red)';
+    }
+
+    show('seo-stats-bar');
+    markNavDone(3);
+    setStatus('seo-status', '✅ SEO-пакет готов', 'success');
+  } catch(e) {
+    setStatus('seo-status', '❌ ' + e.message, 'error');
+  }
+  btn.disabled = false;
+}
+
+/* ── HELPERS ── */
+function show(id) { document.getElementById(id).style.display = ''; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+function setStatus(id, msg, type = '', loading = false) {
+  const el = document.getElementById(id);
+  el.className = 'status-line' + (type ? ' ' + type : '');
+  el.innerHTML = loading ? `<div class="spinner"></div><span>${msg}</span>` : msg;
+}
+
+function setProgress(step, state) {
+  const el = document.getElementById('ps-' + step);
+  if (!el) return;
+  el.className = 'progress-step' + (state ? ' ' + state : '');
+}
+
+function copyOutput(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    // find parent copy button
+    const el = document.getElementById(id);
+    const btn = el.closest('.output-card')?.querySelector('.copy-action');
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = '✓ СКОПИРОВАНО';
+      btn.style.color = 'var(--green)';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1800);
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
